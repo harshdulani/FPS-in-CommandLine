@@ -13,7 +13,7 @@ float playerY = 8.0f;
 float movementSpeed = 0.5f;
 
 float playerForwardAngle = 0.0f;
-float rotateSpeed = 0.5f;
+float rotateSpeed = 0.75f;
 
 int mapHeight = 16;
 int mapWidth = 16;
@@ -137,6 +137,7 @@ int main()
             int floorPos = screenHeight - ceilingPos;
 
             short wallShade = ' ';                          //assume its too far away
+            short floorShade = ' ';
 
             //shading walls using ext unicode symbols
             if (distanceToWall <= maxDepth / 4.0f)
@@ -144,7 +145,7 @@ int main()
             else if (distanceToWall < maxDepth / 3.0f)
                 wallShade = 0x2593;
             else if (distanceToWall < maxDepth / 2.0f)
-                wallShade = 0x2592; 
+                wallShade = 0x2592;
             else if (distanceToWall < maxDepth)
                 wallShade = 0x2591;
 
@@ -155,7 +156,19 @@ int main()
                 else if (y > ceilingPos && y <= floorPos)   //wall
                     screen[y * screenWidth + x] = wallShade;
                 else
-                    screen[y * screenWidth + x] = ' ';      //floor 
+                {
+                    //shading floor to give depth to scene
+                    //calculating how far away is the current cell (y) from vertical center of screen
+                    //this will tell how far away it is from camera, bc we know it is a floor cell already
+                    float floorCellDistance = 1.0f - (((float)y - screenHeight / 2.0f) / ((float)screenHeight / 2.0f));
+
+                    if (floorCellDistance < 0.25f)      floorShade = '#';
+                    else if (floorCellDistance < 0.5f)  floorShade = 'x';
+                    else if (floorCellDistance < 0.75f) floorShade = '.';
+                    else if (floorCellDistance < 0.9f)  floorShade = '-';
+
+                    screen[y * screenWidth + x] = floorShade;
+                }
             }
         }
 

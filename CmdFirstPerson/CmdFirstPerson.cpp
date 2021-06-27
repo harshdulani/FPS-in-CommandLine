@@ -1,4 +1,5 @@
 #include <iostream>
+#include<chrono>
 using namespace std;
 
 #include <Windows.h>
@@ -9,7 +10,10 @@ int screenHeight = 40;
 //float positions so that player doesn't snap from tile to tile
 float playerX = 8.0f;
 float playerY = 8.0f;
+float movementSpeed = 0.5f;
+
 float playerForwardAngle = 0.0f;
+float rotateSpeed = 0.5f;
 
 int mapHeight = 16;
 int mapWidth = 16;
@@ -37,6 +41,8 @@ int main()
     map += L"################";
     map += L"#..............#";
     map += L"#..............#";
+    map += L"#.........#....#";
+    map += L"#.........#....#";
     map += L"#..............#";
     map += L"#..............#";
     map += L"#..............#";
@@ -44,27 +50,48 @@ int main()
     map += L"#..............#";
     map += L"#..............#";
     map += L"#..............#";
-    map += L"#..............#";
-    map += L"#..............#";
-    map += L"#..............#";
+    map += L"#........#######";
     map += L"#..............#";
     map += L"#..............#";
     map += L"################";
 
-    
+    auto timePoint1 = chrono::system_clock::now();
+    auto timePoint2 = chrono::system_clock::now();
 
     //Game logic
     while (1)
     {
-        //rotation
+        //calculating time delta between frames
+        timePoint2 = chrono::system_clock::now();
+        chrono::duration<float> delta = timePoint2 - timePoint1;
+        timePoint1 = timePoint2;
+        float deltaTime = delta.count();
 
+        //movement
+        #pragma region explanation for GetAsyncKeyState
         //async returns a short with the high bit set to 1 if the key is down
         //every bit except that may give other (usually irrelevant, here def irrelevant) info,
         //ANDing it w 0x8000 means ANDing w same size binary number except that all bits are set
         //so now we a clean slate to check if the A button is pressed
         //since we only care about pressed status, having other bits possibly turned on might interfere with
         //if(zero or non zero)
-        if(GetAsyncKeyState((unsigned short)'A') & 0x8000)
+#pragma endregion
+        if (GetAsyncKeyState((unsigned short)'W') & 0x8000)
+        {
+            playerX += sinf(playerForwardAngle) * movementSpeed * deltaTime;
+            playerY += cosf(playerForwardAngle) * movementSpeed * deltaTime;
+        }
+        if (GetAsyncKeyState((unsigned short)'S') & 0x8000)
+        {
+            playerX -= sinf(playerForwardAngle) * movementSpeed * deltaTime;
+            playerY -= cosf(playerForwardAngle) * movementSpeed * deltaTime;
+        }
+
+        //rotation
+        if (GetAsyncKeyState((unsigned short)'A') & 0x8000)
+            playerForwardAngle -= rotateSpeed * deltaTime;
+        if (GetAsyncKeyState((unsigned short)'D') & 0x8000)
+            playerForwardAngle += rotateSpeed * deltaTime;
 
         //only concerning ourself w width because no vertical cam movement
         //screenwidth because for every frame, we work on, we calculate a ray for every pixel (/ column) on screen
@@ -109,12 +136,24 @@ int main()
             int ceilingPos = (float)(screenHeight / 2) - screenHeight / ((float)distanceToWall);
             int floorPos = screenHeight - ceilingPos;
 
+            short wallShade = ' ';                          //assume its too far away
+
+            //shading walls using ext unicode symbols
+            if (distanceToWall <= maxDepth / 4.0f)
+                wallShade = 0x2588;
+            else if (distanceToWall < maxDepth / 3.0f)
+                wallShade = 0x2593;
+            else if (distanceToWall < maxDepth / 2.0f)
+                wallShade = 0x2592; 
+            else if (distanceToWall < maxDepth)
+                wallShade = 0x2591;
+
             for (int y = 0; y < screenHeight; y++)
             {
                 if (y < ceilingPos)
                     screen[y * screenWidth + x] = ' ';      //ceiling should be shaded blank
                 else if (y > ceilingPos && y <= floorPos)   //wall
-                    screen[y * screenWidth + x] = '#';
+                    screen[y * screenWidth + x] = wallShade;
                 else
                     screen[y * screenWidth + x] = ' ';      //floor 
             }

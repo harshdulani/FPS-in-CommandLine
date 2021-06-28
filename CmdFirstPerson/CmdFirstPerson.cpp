@@ -4,13 +4,30 @@ using namespace std;
 
 #include <Windows.h>
 
+#pragma region mirrored map bug
+/*
+37:00 i have noticed a little problem. the world is rendered in mirror image. if you turn right in the game and walk foreward, the map shows that you have turned left and walked foreward.
+
+i fixed it by changing this line 199 (line 257 in github) into 
+
+screen[(ny + 1) * nScreenWidth + nx] = map[ny * nMapWidth + (nMapWidth - nx - 1)];
+
+and line 202 (line 259 in github) into
+
+screen[((int)fPlayerY + 1) * nScreenWidth + (int)(nMapWidth -  fPlayerX)] = 'P';
+
+these changes mirror the map and they mirror the player's position on the map and thus everything works correct.
+
+btw it was a helpfull and great video*/
+#pragma endregion
+
 int screenWidth = 120;
 int screenHeight = 40;
 
 //float positions so that player doesn't snap from tile to tile
 float playerX = 8.0f;
 float playerY = 8.0f;
-float movementSpeed = 0.5f;
+float movementSpeed = 1.0f;
 
 float playerForwardAngle = 0.0f;
 float rotateSpeed = 0.75f;
@@ -68,13 +85,15 @@ int main()
         float deltaTime = delta.count();
 
         //movement
+        float oldX = playerX, oldY = playerY;
+
         #pragma region explanation for GetAsyncKeyState
-        //async returns a short with the high bit set to 1 if the key is down
-        //every bit except that may give other (usually irrelevant, here def irrelevant) info,
-        //ANDing it w 0x8000 means ANDing w same size binary number except that all bits are set
-        //so now we a clean slate to check if the A button is pressed
-        //since we only care about pressed status, having other bits possibly turned on might interfere with
-        //if(zero or non zero)
+//async returns a short with the high bit set to 1 if the key is down
+//every bit except that may give other (usually irrelevant, here def irrelevant) info,
+//ANDing it w 0x8000 means ANDing w same size binary number except that all bits are set
+//so now we a clean slate to check if the A button is pressed
+//since we only care about pressed status, having other bits possibly turned on might interfere with
+//if(zero or non zero)
 #pragma endregion
         if (GetAsyncKeyState((unsigned short)'W') & 0x8000)
         {
@@ -86,14 +105,31 @@ int main()
             playerX -= sinf(playerForwardAngle) * movementSpeed * deltaTime;
             playerY -= cosf(playerForwardAngle) * movementSpeed * deltaTime;
         }
+        //strafe
+        if (GetAsyncKeyState((unsigned short)'A') & 0x8000)
+        {
+            playerX -= cosf(playerForwardAngle) * movementSpeed * deltaTime;
+            playerY -= sinf(playerForwardAngle) * movementSpeed * deltaTime;
+        }
+        if (GetAsyncKeyState((unsigned short)'D') & 0x8000)
+        {
+            playerX += cosf(playerForwardAngle) * movementSpeed * deltaTime;
+            playerY += sinf(playerForwardAngle) * movementSpeed * deltaTime;
+        }
+
+        //collision detection
+        if (map[(int)playerY * mapWidth + (int)playerX] == '#')
+        {
+            playerX = oldX;
+            playerY = oldY;
+        }
 
         //rotation
-        if (GetAsyncKeyState((unsigned short)'A') & 0x8000)
+        if (GetAsyncKeyState(VK_LEFT) & 0x8000)
             playerForwardAngle -= rotateSpeed * deltaTime;
-        if (GetAsyncKeyState((unsigned short)'D') & 0x8000)
-            playerForwardAngle += rotateSpeed * deltaTime;
+        if (GetAsyncKeyState(VK_RIGHT) & 0x8000)
+            playerForwardAngle += rotateSpeed * deltaTime;        
 
-        //only concerning ourself w width because no vertical cam movement
         //screenwidth because for every frame, we work on, we calculate a ray for every pixel (/ column) on screen
         for (int x = 0; x < screenWidth; x++)
         {
